@@ -4,8 +4,9 @@
 #![allow(clippy::wildcard_imports)]
 
 use seed::{prelude::*, *};
-use std::collections::HashMap;
 
+use crate::models::{Cell, Grid, GrowthStatus};
+mod models;
 
 // ------ ------
 //     Init
@@ -13,7 +14,7 @@ use std::collections::HashMap;
 
 // `init` describes what should happen when your app started.
 fn init(_: Url, _: &mut impl Orders<Msg>) -> Model {
-       Model::new(5, 5)
+    Model::new(5, 5)
 }
 
 // ------ ------
@@ -22,17 +23,13 @@ fn init(_: Url, _: &mut impl Orders<Msg>) -> Model {
 
 // `Model` describes our app state.
 struct Model {
-    counters: HashMap<(i32, i32), i32>,
+    counters: Grid,
 }
 impl Model {
     fn new(width: i32, height: i32) -> Model {
-        let mut counters = HashMap::new();
-        for i in 0 .. height {
-            for j in 0 .. width {
-                counters.insert((i, j), 0);
-            }
+        Model {
+            counters: Grid::new(width, height),
         }
-        Model { counters } 
     }
 }
 
@@ -49,11 +46,12 @@ enum Msg {
 // `update` describes how to handle each `Msg`.
 fn update(msg: Msg, model: &mut Model, _: &mut impl Orders<Msg>) {
     match msg {
-        Msg::Increment(a, b) => {
-            if let Some(v) = model.counters.get_mut(&(a, b)) {
-                *v += 1;
+        Msg::Increment(a, b) => match model.counters.get_mut(&(a, b)) {
+            None => {}
+            Some(Cell { radiators, .. }) => {
+                *radiators = 1 - *radiators;
             }
-        }
+        },
     }
 }
 
@@ -65,12 +63,41 @@ fn update(msg: Msg, model: &mut Model, _: &mut impl Orders<Msg>) {
 #[allow(clippy::trivially_copy_pass_by_ref)]
 // `view` describes what to display.
 fn view(model: &Model) -> Node<Msg> {
-    let buttons: Vec<Node<Msg>> = model.counters.iter().map(|(&(i, j), &v)| {
-        button![v, ev(Ev::Click, move |_| Msg::Increment(i, j))]
-    }).collect();
+    let buttons: Vec<Node<Msg>> = model
+        .counters
+        .iter()
+        .map(|((i, j), cell)| {
+            let status = model.counters.get_status(&(i, j)).unwrap();
+            let content = format!(
+                "{} [r={},c={}] ({}/{})",
+                model.counters.get_heat(&(i, j)),
+                cell.radiators,
+                cell.capacity,
+                i,
+                j
+            );
+            button![
+                content,
+                ev(Ev::Click, move |_| Msg::Increment(i, j)),
+                style! {
+                    St::GridArea => format!("{}/{}", i + 1, j + 1),
+                    St::Background => match status {
+                        GrowthStatus::TooCold => "blue",
+                        GrowthStatus::TooHot => "orange",
+                        GrowthStatus::Overheated => "red",
+                        GrowthStatus::Fruiting(_) => "green",
+                    },
+                }
+            ]
+        })
+        .collect();
     div![
-        "This is a counter: ",
-        C!["counter"],
+        style! {
+            St::Display => "grid",
+            St::Grid => "repeat(5, 1fr) / repeat(5, 1fr)",
+            St::Width => "640px",
+            St::Height => "640px",
+        },
         buttons,
     ]
 }
