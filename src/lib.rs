@@ -24,11 +24,13 @@ fn init(_: Url, _: &mut impl Orders<Msg>) -> Model {
 // `Model` describes our app state.
 struct Model {
     counters: Grid,
+    radiators_available: u32,
 }
 impl Model {
     fn new(width: i32, height: i32) -> Model {
         Model {
             counters: Grid::new(width, height),
+            radiators_available: 5,
         }
     }
 }
@@ -49,7 +51,13 @@ fn update(msg: Msg, model: &mut Model, _: &mut impl Orders<Msg>) {
         Msg::Increment(a, b) => match model.counters.get_mut(&(a, b)) {
             None => {}
             Some(Cell { radiators, .. }) => {
-                *radiators = 1 - *radiators;
+                if *radiators == 1 {
+                    *radiators = 0;
+                    model.radiators_available += 1;
+                } else if model.radiators_available > 0 {
+                    *radiators = 1;
+                    model.radiators_available -= 1;
+                }
             }
         },
     }
@@ -63,26 +71,24 @@ fn update(msg: Msg, model: &mut Model, _: &mut impl Orders<Msg>) {
 #[allow(clippy::trivially_copy_pass_by_ref)]
 // `view` describes what to display.
 fn view(model: &Model) -> Node<Msg> {
-    let buttons: Vec<Node<Msg>> = model
-        .counters
+    div![
+        view_grid(&model.counters),
+        div![format!("{} radiators available", model.radiators_available),],
+        div![format!("{} pineapples", model.counters.total_growth()),]
+    ]
+}
+fn view_grid(grid: &Grid) -> Node<Msg> {
+    let buttons: Vec<Node<Msg>> = grid
         .iter()
         .map(|((i, j), cell)| {
-            let status = model.counters.get_status(&(i, j)).unwrap();
-            let content = format!(
-                "{} [r={},c={}] ({}/{})",
-                model.counters.get_heat(&(i, j)),
-                cell.radiators,
-                cell.capacity,
-                i,
-                j
-            );
+            let status = grid.get_status(&(i, j)).unwrap();
             button![
-                content,
+                cell.capacity,
                 ev(Ev::Click, move |_| Msg::Increment(i, j)),
                 style! {
                     St::GridArea => format!("{}/{}", i + 1, j + 1),
                     St::Background => match status {
-                        GrowthStatus::TooCold => "blue",
+                        GrowthStatus::TooCold => "lightblue",
                         GrowthStatus::TooHot => "orange",
                         GrowthStatus::Overheated => "red",
                         GrowthStatus::Fruiting(_) => "green",

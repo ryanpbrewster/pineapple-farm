@@ -68,6 +68,15 @@ impl Grid {
             }
         })
     }
+
+    pub fn total_growth(&self) -> u32 {
+        self.iter()
+            .map(|(idx, _)| match self.get_status(&idx) {
+                Some(GrowthStatus::Fruiting(count)) => count,
+                _ => 0,
+            })
+            .sum()
+    }
 }
 
 type Idx = (i32, i32);
