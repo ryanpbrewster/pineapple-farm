@@ -1,13 +1,23 @@
+use rand::Rng;
+
 pub struct Grid {
     width: i32,
     elements: Vec<Cell>,
 }
 
 impl Grid {
-    pub fn new(width: i32, height: i32) -> Grid {
+    pub fn dimensions(&self) -> (usize, usize) {
+        (
+            self.width as usize,
+            self.elements.len() / self.width as usize,
+        )
+    }
+    pub fn random<R: Rng>(width: i32, height: i32, prng: &mut R) -> Grid {
         Grid {
             width,
-            elements: (0..width * height).map(|_| Cell::default()).collect(),
+            elements: (0..width * height)
+                .map(|_| Cell::new(prng.gen_range(0, 20)))
+                .collect(),
         }
     }
 
@@ -94,10 +104,10 @@ pub struct Cell {
     pub capacity: u32,
     pub radiators: u32,
 }
-impl Default for Cell {
-    fn default() -> Cell {
+impl Cell {
+    fn new(capacity: u32) -> Cell {
         Cell {
-            capacity: 5,
+            capacity,
             radiators: 0,
         }
     }

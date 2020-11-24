@@ -3,6 +3,7 @@
 // but some rules are too "annoying" or are not applicable for your case.)
 #![allow(clippy::wildcard_imports)]
 
+use rand::Rng;
 use seed::{prelude::*, *};
 
 use crate::models::{Cell, Grid, GrowthStatus};
@@ -14,7 +15,8 @@ mod models;
 
 // `init` describes what should happen when your app started.
 fn init(_: Url, _: &mut impl Orders<Msg>) -> Model {
-    Model::new(5, 5)
+    let mut prng = rand::thread_rng();
+    Model::random(&mut prng)
 }
 
 // ------ ------
@@ -27,9 +29,11 @@ struct Model {
     radiators_available: u32,
 }
 impl Model {
-    fn new(width: i32, height: i32) -> Model {
+    fn random<R: Rng>(prng: &mut R) -> Model {
+        let width = prng.gen_range(4, 10);
+        let height = prng.gen_range(4, 10);
         Model {
-            counters: Grid::new(width, height),
+            counters: Grid::random(width, height, prng),
             radiators_available: 5,
         }
     }
@@ -78,6 +82,7 @@ fn view(model: &Model) -> Node<Msg> {
     ]
 }
 fn view_grid(grid: &Grid) -> Node<Msg> {
+    let (width, height) = grid.dimensions();
     let buttons: Vec<Node<Msg>> = grid
         .iter()
         .map(|((i, j), cell)| {
@@ -100,7 +105,7 @@ fn view_grid(grid: &Grid) -> Node<Msg> {
     div![
         style! {
             St::Display => "grid",
-            St::Grid => "repeat(5, 1fr) / repeat(5, 1fr)",
+            St::Grid => format!("repeat({}, 1fr) / repeat({}, 1fr)", height, width),
             St::Width => "640px",
             St::Height => "640px",
         },
